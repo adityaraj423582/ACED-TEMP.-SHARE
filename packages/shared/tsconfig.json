@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    // DOM adds type defs for the web-standard globals telemetry.ts uses (fetch,
+    // URL, crypto, btoa). These exist at runtime in both Node 24 and browsers; the
+    // lib entry is type-only and does not change the emitted JS.
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src"]
+}

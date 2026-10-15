@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Approve native build/install scripts (pnpm v10+ blocks these by default).
+allowBuilds:
+  electron: true
+  esbuild: true

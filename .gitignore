@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Next.js (apps/web)
+.next/
+
+# Electron packaging output (apps/desktop)
+release/
+
+# Turborepo
+.turbo/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Secrets / environment (never commit real values)
+.env
+.env.*
+!.env.example
+MY-API-KEYS.local.txt
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json

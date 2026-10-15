@@ -1,0 +1,15 @@
+# Normalise to LF in the repository, check out native on Windows.
+* text=auto
+
+# Windows script hosts require CRLF. A .vbs checked out with LF still runs, but the
+# error messages inside it render as one long line, so pin these explicitly.
+*.vbs text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Never touch binaries.
+*.png binary
+*.ico binary
+*.icns binary
+*.zip binary

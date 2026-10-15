@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src ws://127.0.0.1:* https: wss:; worker-src 'self';"
+    />
+    <title>Aced Overlay</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="overlay">
+      <header class="titlebar">
+        <span id="rec-dot" class="dot" aria-hidden="true"></span>
+        <span id="app-label" class="title">Aced</span>
+        <button id="keys-btn" class="titlebar-btn" type="button" aria-label="Add or change your API keys">
+          Keys
+        </button>
+        <button id="notes-btn" class="titlebar-btn" type="button" aria-label="Save and open the list of questions asked this meeting">
+          Notes
+        </button>
+        <button id="close-btn" class="close" aria-label="Quit (Ctrl+Shift+Q)">
+          &#10005;
+        </button>
+      </header>
+      <section id="error-banner" class="error-banner" aria-live="polite" hidden>
+        <span id="error-text" class="error-text"></span>
+        <button id="error-dismiss" class="error-dismiss" type="button" aria-label="Dismiss">
+          &#10005;
+        </button>
+      </section>
+      <section id="keys-panel" class="keys-panel" aria-label="API keys" hidden>
+        <form id="keys-form" class="keys-form" autocomplete="off">
+          <div class="keys-head">
+            <span class="keys-title">Add your API keys</span>
+            <span class="keys-sub">Paste each key with Ctrl+V, then Save. Stored encrypted on this PC only.</span>
+          </div>
+          <label class="key-field" for="key-groq">
+            <span class="key-label">Groq <span class="key-note">required · writes the answers</span></span>
+            <input id="key-groq" class="key-input" type="password" spellcheck="false" placeholder="gsk_…  (console.groq.com/keys)" />
+            <span id="key-groq-status" class="key-status"></span>
+          </label>
+          <label class="key-field" for="key-deepgram">
+            <span class="key-label">Deepgram <span class="key-note">required · live transcription</span></span>
+            <input id="key-deepgram" class="key-input" type="password" spellcheck="false" placeholder="console.deepgram.com → API Keys" />
+            <span id="key-deepgram-status" class="key-status"></span>
+          </label>
+          <label class="key-field" for="key-sarvam">
+            <span class="key-label">Sarvam <span class="key-note">optional · only needed for Gujarati</span></span>
+            <input id="key-sarvam" class="key-input" type="password" spellcheck="false" placeholder="dashboard.sarvam.ai (leave empty if not needed)" />
+            <span id="key-sarvam-status" class="key-status"></span>
+          </label>
+          <div class="keys-actions">
+            <button id="keys-save" class="capture-btn capture-btn-primary" type="submit">Save</button>
+            <button id="keys-close" class="capture-btn" type="button">Close</button>
+            <span id="keys-message" class="keys-message" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+      <section class="controls" aria-label="Capture controls">
+        <div class="controls-row">
+          <span class="provider-label">STT</span>
+          <div id="provider-select" class="provider-select" aria-label="Speech-to-text provider"></div>
+          <div id="source-select" class="provider-select" aria-label="Audio source"></div>
+          <button id="start-capture-btn" class="capture-btn capture-btn-primary" type="button">
+            Start
+          </button>
+          <button id="stop-capture-btn" class="capture-btn" type="button" disabled>Stop</button>
+        </div>
+        <div class="capture-status">
+          <span id="them-dot" class="status-dot" aria-hidden="true"></span>
+          <span id="them-status">idle</span>
+          <span class="status-sep" aria-hidden="true">·</span>
+          <span id="stt-status" class="stt-status">idle</span>
+        </div>
+      </section>
+      <section class="answer" aria-label="AI answer">
+        <div class="answer-actions">
+          <div id="answer-provider" class="answer-provider" aria-label="Which AI writes the answers"></div>
+          <button id="solve-btn" class="capture-btn capture-btn-primary" type="button" aria-label="Solve the on-screen problem (Ctrl+Shift+C)">
+            Code
+          </button>
+          <button id="lock-btn" class="capture-btn lock-btn" type="button" aria-label="Freeze the answer (Ctrl+Shift+L)" aria-pressed="false">
+            Lock
+          </button>
+          <button id="dim-btn" class="capture-btn" type="button" aria-label="Fade the overlay (Ctrl+Shift+D)" aria-pressed="false">
+            Dim
+          </button>
+          <button id="clear-btn" class="capture-btn" type="button" aria-label="New problem — clears transcript, answer and memory">
+            Clear
+          </button>
+        </div>
+        <div id="answer-text" class="answer-text" aria-live="polite"></div>
+        <form id="quick-ask" class="quick-ask" autocomplete="off">
+          <input
+            id="quick-ask-input"
+            class="quick-ask-input"
+            type="text"
+            placeholder="Type a question and press Enter…"
+            aria-label="Ask a question directly"
+            spellcheck="false"
+          />
+          <button id="quick-ask-send" class="quick-ask-send" type="submit" aria-label="Ask (Enter)">
+            &#8629;
+          </button>
+        </form>
+      </section>
+      <section class="transcript" aria-label="Live transcript">
+        <div id="transcript-lines" class="transcript-lines" aria-live="polite"></div>
+      </section>
+      <main id="log" class="log" aria-live="polite"></main>
+    </div>
+    <script type="module" src="renderer.js"></script>
+  </body>
+</html>

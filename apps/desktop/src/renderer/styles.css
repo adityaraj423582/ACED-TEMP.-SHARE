@@ -1,0 +1,1151 @@
+:root {
+  color-scheme: dark;
+  /* Liquid glass — cool slate panel, soft light, calm mint accents. */
+  --mc-glass: rgba(26, 30, 38, 0.55);
+  --mc-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.04) 24%,
+    rgba(255, 255, 255, 0) 58%
+  );
+  --mc-rim: rgba(255, 255, 255, 0.26);
+  --mc-fill: rgba(255, 255, 255, 0.07);
+  --mc-fill-hover: rgba(255, 255, 255, 0.13);
+  --mc-text: rgba(238, 243, 248, 0.95);
+  --mc-text-secondary: rgba(222, 229, 238, 0.88);
+  --mc-muted: rgba(200, 209, 222, 0.6);
+  --mc-faint: rgba(192, 201, 216, 0.42);
+  /* Calm mint: easy on the eyes against dark glass, no glare. */
+  --mc-answer: #b9ecd2;
+  --mc-accent: #8fdcba;
+  --mc-accent-dim: rgba(143, 220, 186, 0.16);
+  --mc-emerald: #6fe3ac;
+  --mc-amber: #ffd479;
+  --mc-border: rgba(255, 255, 255, 0.12);
+  --mc-border-soft: rgba(255, 255, 255, 0.07);
+  --mc-danger: #ff8a80;
+  --mc-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+/*
+ * Privacy dim (Ctrl+Shift+D toggles).
+ *
+ * The overlay floats over an unknown backdrop — Teams' dark chrome one moment, a
+ * white shared doc the next — so any FIXED panel colour fails half the time: a dark
+ * slab hides on Teams but screams on white, and light text does the reverse.
+ *
+ * Instead the backdrop-filter crushes whatever is behind toward MID-GREY
+ * (contrast(0.26) pulls both white and black in; the blur removes any texture), and
+ * the text is mid-grey too. Grey-on-grey stays low-contrast whichever way the real
+ * background goes, and the panel reads as a soft frosted patch rather than a box.
+ * Colours are solid (not white-with-alpha) so they can't ride the backdrop brighter.
+ */
+.overlay[data-dim="on"] {
+  /*
+   * contrast(0.13) maps the backdrop into a narrow band around mid-grey:
+   * white 255 -> ~146, a dark Teams window ~30 -> ~113. The text greys below sit
+   * just under the middle of that band (~124), so the gap stays small on BOTH —
+   * and slightly smaller on the dark side, since light-on-dark reads more
+   * prominently than dark-on-light at an equal luminance gap.
+   */
+  --mc-glass: rgba(128, 130, 134, 0.08);
+  --mc-text: #797c81;
+  --mc-text-secondary: #767a7f;
+  --mc-muted: #74777c;
+  --mc-faint: #717479;
+  --mc-answer: #7d8085;
+  --mc-accent: #787c80;
+  --mc-border: rgba(128, 130, 134, 0.09);
+  --mc-border-soft: rgba(128, 130, 134, 0.05);
+  --mc-shadow: none;
+  /* No sheen, rim glow, or saturated status colours to catch a wandering eye. */
+  --mc-sheen: none;
+  --mc-rim: rgba(128, 130, 134, 0.09);
+  --mc-accent-dim: rgba(128, 130, 134, 0.06);
+  --mc-emerald: #75787d;
+  --mc-amber: #7b7975;
+  --mc-danger: #807775;
+  /*
+   * NO contrast/brightness change: any shift makes the panel a differently-lit
+   * rectangle against its surroundings, which is what gives the overlay away even
+   * when the text is faint. The panel now keeps the backdrop's own luminance (a
+   * light blur just smooths texture so text stays readable), and the tint on top is
+   * set dynamically from the measured backdrop so the region matches what's around
+   * it. BACKDROP_CRUSH in renderer.ts must match this filter (no contrast = 1).
+   */
+  /*
+   * saturate() stays near 1: pulling colour out of the backdrop left the overlay as a
+   * washed-out patch over anything colourful (a person's video, a coloured slide),
+   * which gave the rectangle away even when its brightness matched exactly. The panel
+   * tint and text now carry the backdrop's own hue instead (see applyBackdropTone).
+   */
+  backdrop-filter: blur(14px) saturate(0.92);
+  -webkit-backdrop-filter: blur(14px) saturate(0.92);
+  /* A visible outline defines the rectangle more than any fill — remove it. */
+  border-color: transparent;
+}
+
+/*
+ * The sampled tone is re-applied about once a second; fade between values so the
+ * change is never a visible step (a snap would draw exactly the attention we are
+ * trying to avoid). Text colour only — layout and opacity stay put.
+ */
+.overlay[data-dim="on"] .answer-text,
+.overlay[data-dim="on"] .transcript-line,
+.overlay[data-dim="on"] .capture-row,
+.overlay[data-dim="on"] .capture-btn,
+.overlay[data-dim="on"] .title {
+  transition: color var(--mc-tone-fade, 0.22s) linear,
+    background-color var(--mc-tone-fade, 0.22s) linear,
+    border-color var(--mc-tone-fade, 0.22s) linear;
+}
+
+/*
+ * The panel tint tracks the backdrop too — fade it so the surface never jumps.
+ * --mc-tone-fade is normally unset (0.5s); the renderer raises it to 1.6s for the one
+ * repaint where the text flips to the other side of the backdrop, which is a much
+ * larger jump and would otherwise snap.
+ */
+.overlay[data-dim="on"] {
+  transition: background var(--mc-tone-fade, 0.22s) linear;
+}
+
+/*
+ * Surfaces that are painted with FIXED white alpha rather than the theme variables:
+ * button fills, their inset highlight, and the scrollbar thumb. Nothing above
+ * overrides them, so on a dark backdrop they stayed bright while the rest of the
+ * overlay adapted — the Dim button and scrollbar were the two visible giveaways.
+ */
+.overlay[data-dim="on"] {
+  --mc-fill: rgba(128, 130, 134, 0.05);
+  --mc-fill-hover: rgba(128, 130, 134, 0.09);
+}
+
+.overlay[data-dim="on"] .capture-btn,
+.overlay[data-dim="on"] .capture-btn:disabled {
+  background: transparent;
+  border-color: var(--mc-border-soft);
+  box-shadow: none;
+}
+
+/* Scrollbars are hidden while dimmed: the answer auto-scrolls, and a pale thumb on a
+   dark backdrop is exactly the kind of bright edge that draws a wandering eye. */
+.overlay[data-dim="on"] ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.overlay[data-dim="on"] ::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+/*
+ * Compact stealth layout: dimming strips the overlay down to the answer text and the
+ * Dim button. Nothing else is needed mid-call — every action has a global hotkey
+ * (Ctrl+Enter ask, Ctrl+Shift+C code, +E explain, +L lock, +H hide, Ctrl+D kill) —
+ * and the main process shrinks the window to match.
+ */
+.overlay[data-dim="on"] .titlebar,
+.overlay[data-dim="on"] .controls,
+.overlay[data-dim="on"] .transcript,
+.overlay[data-dim="on"] .error-banner,
+.overlay[data-dim="on"] .quick-ask,
+.overlay[data-dim="on"] .answer-label,
+.overlay[data-dim="on"] .answer-provider,
+/* Code stays: a coding question can arrive at any moment, and Ctrl+Shift+C is often
+   taken by another app, so hiding the button left coding mode unreachable while dimmed. */
+.overlay[data-dim="on"] .answer-actions .capture-btn:not(#dim-btn):not(#solve-btn) {
+  display: none;
+}
+
+/*
+ * The titlebar is gone, so the bar itself is the drag handle.
+ *
+ * The .answer section carries `no-drag` normally (so you can select and scroll it),
+ * but in dim mode that section IS the whole visible bar — leaving only a sliver of
+ * the button row draggable, which made moving the bar a game of hunt-the-pixel.
+ * Here the section becomes draggable and only the genuinely interactive children opt
+ * out, so the whole margin around the answer box works as a handle.
+ */
+.overlay[data-dim="on"] .answer {
+  -webkit-app-region: drag;
+  gap: 7px;
+  padding: 9px 11px;
+}
+
+.overlay[data-dim="on"] {
+  -webkit-app-region: drag;
+}
+
+.overlay[data-dim="on"] .answer {
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: none;
+}
+
+/*
+ * The answer fills whatever height the window has (~3 lines at the default compact
+ * size), so dragging the window edge to resize simply shows more or fewer lines.
+ */
+.overlay[data-dim="on"] .answer-text {
+  -webkit-app-region: no-drag;
+  flex: 1 1 auto;
+  min-height: 3.4em;
+  height: auto;
+  padding: 8px 11px;
+  border-radius: 12px;
+}
+
+/*
+ * The button row stays a DRAG handle (only the Dim button itself is clickable), so
+ * there is a real strip to grab — the text box has to stay no-drag to scroll, and
+ * without this the bar would have almost no draggable surface at all.
+ */
+/* The row itself stays draggable; only the two surviving buttons opt out. */
+.overlay[data-dim="on"] .answer-actions {
+  -webkit-app-region: drag;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 26px;
+}
+
+.overlay[data-dim="on"] #dim-btn,
+.overlay[data-dim="on"] #solve-btn {
+  -webkit-app-region: no-drag;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 24px;
+  padding: 3px 12px;
+  font-size: 11px;
+}
+
+/* The answer box loses its tinted fill + inner highlight when dimmed. */
+.overlay[data-dim="on"] .answer-text {
+  background: none;
+  box-shadow: none;
+  border-color: var(--mc-border-soft);
+}
+
+/*
+ * The primary (Code/Start) buttons and the active Lock button paint themselves with
+ * hard-coded mint gradients/fills instead of the theme variables, so they stay bright
+ * unless overridden here — they were the loudest thing left on a dimmed overlay.
+ */
+/*
+ * Primary buttons (Code, Start) must fade EXACTLY like the plain ones. They used
+ * fixed grey values here, while .capture-btn takes var(--mc-text-secondary) — and
+ * that variable is rewritten live by the backdrop sampler. So Dim faded with the
+ * background and Code stayed a constant grey, visibly brighter beside it.
+ * Everything below is variable-driven, so both track the backdrop together.
+ */
+.overlay[data-dim="on"] .capture-btn-primary,
+.overlay[data-dim="on"] .capture-btn-primary:disabled {
+  background: transparent;
+  border-color: var(--mc-border-soft);
+  color: var(--mc-text-secondary);
+  box-shadow: none;
+}
+
+/* The sweep animation on the primary button is pure motion — off while dimmed. */
+.overlay[data-dim="on"] .capture-btn-primary::after {
+  display: none;
+}
+
+/* Same for the "locked" state — variable-driven so it fades with everything else. */
+.overlay[data-dim="on"] .lock-btn[data-active="true"] {
+  background: transparent;
+  border-color: var(--mc-border-soft);
+  color: var(--mc-text-secondary);
+}
+
+/* Motion catches peripheral vision faster than text — stop it entirely while dimmed. */
+.overlay[data-dim="on"] .dot[data-state="recording"] {
+  animation: none;
+  box-shadow: none;
+}
+
+.overlay[data-dim="on"] .answer-text[data-state="pending"]::after {
+  animation: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Text entry still needs selection to be usable. */
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Belt and braces: even a programmatic selection paints nothing. */
+::selection {
+  background: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  font-family: "Inter", system-ui, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.overlay {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  /*
+   * Nothing in the overlay is selectable: dragging to scroll the answer used to paint
+   * a bright blue selection across it, which is both distracting and — while dimmed —
+   * the most visible thing on screen. Form controls opt back in below.
+   */
+  user-select: none;
+  -webkit-user-select: none;
+  color: var(--mc-text);
+  background: var(--mc-sheen), var(--mc-glass);
+  backdrop-filter: blur(48px) saturate(170%);
+  -webkit-backdrop-filter: blur(48px) saturate(170%);
+  border: 1px solid var(--mc-border);
+  border-top-color: var(--mc-rim);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--mc-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.titlebar {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 38px;
+  padding: 0 14px;
+  cursor: move;
+  border-bottom: 1px solid var(--mc-border-soft);
+  user-select: none;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mc-faint);
+  transition: background 0.25s ease;
+}
+
+.dot[data-state="recording"] {
+  background: var(--mc-emerald);
+  animation: mc-pulse 1.8s ease-out infinite;
+}
+
+@keyframes mc-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(111, 227, 172, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(111, 227, 172, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(111, 227, 172, 0);
+  }
+}
+
+.title {
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: 0.01em;
+}
+
+.titlebar-btn {
+  -webkit-app-region: no-drag;
+  margin-left: auto;
+  min-height: 24px;
+  padding: 3px 12px;
+  border: 1px solid var(--mc-border);
+  border-radius: 999px;
+  background: var(--mc-fill);
+  color: var(--mc-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.titlebar-btn:hover {
+  background: var(--mc-fill-hover);
+  color: var(--mc-text);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.titlebar-btn[data-active="true"] {
+  background: var(--mc-accent-dim);
+  color: var(--mc-accent);
+  border-color: rgba(143, 220, 186, 0.35);
+}
+
+.close {
+  -webkit-app-region: no-drag;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--mc-faint);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.close:hover {
+  background: rgba(255, 138, 128, 0.18);
+  color: var(--mc-danger);
+}
+
+.error-banner {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--mc-border-soft);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--mc-danger);
+  background: rgba(255, 138, 128, 0.12);
+}
+
+.error-banner[hidden] {
+  display: none;
+}
+
+.error-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--mc-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+}
+
+.error-dismiss:hover {
+  background: var(--mc-fill-hover);
+  color: var(--mc-text);
+}
+
+.controls {
+  -webkit-app-region: no-drag;
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--mc-border-soft);
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.provider-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mc-faint);
+}
+
+/*
+ * In-page dropdown (see dropdown.ts). A native <select> popup is a separate OS
+ * window, so Windows content protection does not cover it and the option list shows
+ * up in a screen share. This is plain DOM inside the protected window instead.
+ */
+.dd {
+  position: relative;
+  -webkit-app-region: no-drag;
+}
+
+.dd-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 1px solid var(--mc-border);
+  border-radius: 999px;
+  background: var(--mc-fill);
+  color: var(--mc-text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.dd-btn:hover:not(:disabled) {
+  background: var(--mc-fill-hover);
+}
+
+.dd-btn:disabled {
+  color: var(--mc-faint);
+  cursor: default;
+}
+
+.dd-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: 220px;
+  display: grid;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--mc-border);
+  border-radius: 12px;
+  background: #232730;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.dd-list[hidden] {
+  display: none;
+}
+
+.dd-item {
+  padding: 6px 11px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mc-text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dd-item:hover:not(:disabled) {
+  background: var(--mc-fill-hover);
+  color: var(--mc-text);
+}
+
+.dd-item[aria-selected="true"] {
+  color: var(--mc-accent);
+}
+
+.dd-item:disabled {
+  color: var(--mc-faint);
+  cursor: default;
+}
+
+.provider-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Secondary button: frosted glass pill. */
+.capture-btn {
+  position: relative;
+  overflow: hidden;
+  min-height: 34px;
+  border: 1px solid var(--mc-border);
+  border-radius: 999px;
+  padding: 6px 15px;
+  color: var(--mc-text-secondary);
+  background: var(--mc-fill);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease,
+    transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+.capture-btn:hover:not(:disabled) {
+  background: var(--mc-fill-hover);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.capture-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+
+.capture-btn:disabled {
+  border-color: var(--mc-border-soft);
+  color: var(--mc-faint);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: default;
+  box-shadow: none;
+}
+
+/* Primary button: soft mint glass with a gentle sweep on hover. */
+.capture-btn-primary {
+  border-color: rgba(143, 220, 186, 0.36);
+  background: linear-gradient(
+    180deg,
+    rgba(143, 220, 186, 0.26) 0%,
+    rgba(143, 220, 186, 0.1) 100%
+  );
+  color: #eafff4;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.capture-btn-primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  transform: skewX(-22deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+
+.capture-btn-primary:hover:not(:disabled) {
+  border-color: rgba(143, 220, 186, 0.5);
+  background: linear-gradient(
+    180deg,
+    rgba(143, 220, 186, 0.34) 0%,
+    rgba(143, 220, 186, 0.16) 100%
+  );
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 22px rgba(0, 0, 0, 0.3);
+}
+
+.capture-btn-primary:hover:not(:disabled)::after {
+  left: 130%;
+}
+
+.capture-btn-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+
+.capture-btn-primary:disabled {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.38);
+  box-shadow: none;
+}
+
+.capture-btn-primary:disabled::after {
+  display: none;
+}
+
+/* One compact status line — two boxed pills wasted a whole row for six words. */
+.capture-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 0 2px;
+  color: var(--mc-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.capture-status > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-sep {
+  color: var(--mc-faint);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--mc-faint);
+  transition: background 0.25s ease;
+}
+
+.status-dot[data-state="pending"] {
+  background: var(--mc-amber);
+}
+
+.status-dot[data-state="active"] {
+  background: var(--mc-emerald);
+}
+
+.status-dot[data-state="error"] {
+  background: var(--mc-danger);
+}
+
+.stt-status[data-state="pending"] {
+  color: var(--mc-amber);
+}
+
+.stt-status[data-state="active"] {
+  color: var(--mc-emerald);
+}
+
+.stt-status[data-state="error"] {
+  color: var(--mc-danger);
+}
+
+/* The answer is the hero: it gets the flexible space, right under the controls. */
+.answer {
+  -webkit-app-region: no-drag;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--mc-border-soft);
+}
+
+/*
+ * Which AI answers first. Sits where the section label used to, so it costs no extra
+ * row: it names the section AND lets you switch, which a static "ANSWER" could not.
+ */
+.answer-provider {
+  margin-right: auto;
+  width: 92px;
+  flex: 0 0 auto;
+}
+
+.answer-provider .dd-btn {
+  min-height: 27px;
+  padding: 3px 10px;
+  border-color: var(--mc-border-soft);
+  color: var(--mc-muted);
+  font-size: 11px;
+}
+
+.answer-label {
+  margin-right: auto;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--mc-faint);
+}
+
+/* Label + action buttons share one row, so the section header costs no height. */
+.answer-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.answer-actions .capture-btn {
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 27px;
+  padding: 4px 11px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.answer-text {
+  flex: 1 1 auto;
+  min-height: 180px;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding: 16px;
+  border: 1px solid rgba(143, 220, 186, 0.22);
+  border-radius: 18px;
+  background: linear-gradient(
+    180deg,
+    rgba(143, 220, 186, 0.06) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  font-size: 15px;
+  line-height: 1.75;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  color: var(--mc-answer);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/*
+ * Quick ask: type a question straight in. Covers everything the mic cannot — a
+ * question the STT garbled, something asked before capture started, or a thought of
+ * your own — and reuses the whole normal answer path (memory, persona, failover).
+ */
+.quick-ask {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-ask-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 13px;
+  border: 1px solid var(--mc-border-soft);
+  border-radius: 999px;
+  background: var(--mc-fill);
+  color: var(--mc-text);
+  font: inherit;
+  font-size: 12.5px;
+  user-select: text;
+  -webkit-user-select: text;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.quick-ask-input::placeholder {
+  color: var(--mc-faint);
+}
+
+.quick-ask-input:focus {
+  outline: none;
+  border-color: rgba(143, 220, 186, 0.4);
+  background: var(--mc-fill-hover);
+}
+
+.quick-ask-send {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--mc-border-soft);
+  border-radius: 50%;
+  background: var(--mc-fill);
+  color: var(--mc-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.quick-ask-send:hover {
+  background: var(--mc-accent-dim);
+  color: var(--mc-accent);
+  border-color: rgba(143, 220, 186, 0.35);
+}
+
+.answer-text:empty::before {
+  content: "Answers appear here automatically when the interviewer finishes a question — or type one below.";
+  color: var(--mc-faint);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.answer-text[data-state="pending"] {
+  color: var(--mc-muted);
+}
+
+.answer-text[data-state="pending"]::after {
+  content: "|";
+  margin-left: 2px;
+  color: var(--mc-accent);
+  font-weight: 600;
+  animation: mc-blink 1s step-start infinite;
+}
+
+@keyframes mc-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.answer-text[data-state="error"] {
+  color: var(--mc-danger);
+}
+
+/*
+ * A spoken answer that contains code (e.g. "write me a SQL query for...") gets the
+ * same monospace treatment, so keywords and indentation align as they will in the
+ * interviewer's editor. Set from the content, not the mode.
+ */
+.answer-text[data-mono="true"] {
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-size: 13.5px;
+  line-height: 1.6;
+  letter-spacing: 0;
+  tab-size: 2;
+}
+
+/* Coding mode: monospace + tighter lines so code and indentation stay readable. */
+.answer-text[data-mode="code"] {
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+  letter-spacing: 0;
+  tab-size: 2;
+}
+
+/* Highlight the function/class/struct declaration lines so signatures stand out. */
+.answer-text[data-mode="code"] strong {
+  font-weight: 700;
+  color: var(--mc-accent);
+}
+
+/* Lock button: clearly "on" when the answer is frozen. */
+.lock-btn[data-active="true"] {
+  background: var(--mc-accent);
+  color: #06231a;
+  border-color: var(--mc-accent);
+}
+
+/* Locked answer box: a distinct border so it's obvious nothing will change it. */
+.answer-text[data-locked="true"] {
+  border-color: var(--mc-accent);
+  box-shadow: inset 0 0 0 1px var(--mc-accent);
+}
+
+/* The transcript is reference material, not the hero — no header, tighter box. */
+.transcript {
+  -webkit-app-region: no-drag;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 14px 12px;
+}
+
+.transcript-lines {
+  flex: 0 0 auto;
+  height: 92px;
+  min-height: 92px;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 10px 13px;
+  border: 1px solid var(--mc-border-soft);
+  border-radius: 14px;
+  background: var(--mc-fill);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.transcript-lines:empty::before {
+  content: "Listening… the interviewer's words will appear here.";
+  color: var(--mc-faint);
+  font-size: 12.5px;
+}
+
+.transcript-line {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px;
+  min-width: 0;
+  color: var(--mc-text-secondary);
+  word-break: break-word;
+}
+
+.transcript-line-partial {
+  color: var(--mc-muted);
+}
+
+.transcript-speaker {
+  font-weight: 700;
+}
+
+.transcript-speaker[data-side="Them"] {
+  color: var(--mc-accent);
+}
+
+.transcript-text {
+  min-width: 0;
+}
+
+/* Diagnostic log — hidden from the polished overlay but kept in the DOM so the
+   renderer's logging keeps working (also mirrored to the console + diag file). */
+.log {
+  display: none;
+}
+
+/* Slim, low-contrast scrollbars that suit the glass surface. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* A second titlebar pill sits beside the first instead of being pushed right again. */
+.titlebar-btn + .titlebar-btn {
+  margin-left: 0;
+}
+
+/*
+ * Keys panel: covers everything under the titlebar while open, so the first launch is
+ * one clear task. It lives inside the overlay window, which keeps it covered by the
+ * window's screen-capture exclusion like everything else.
+ */
+.keys-panel {
+  -webkit-app-region: no-drag;
+  position: absolute;
+  top: 38px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  overflow-y: auto;
+  padding: 18px 18px 20px;
+  background: #14171e;
+}
+
+.keys-panel[hidden] {
+  display: none;
+}
+
+.keys-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.keys-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.keys-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mc-text);
+}
+
+.keys-sub {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--mc-muted);
+}
+
+.key-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.key-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mc-text-secondary);
+}
+
+/* The light hint beside each label (e.g. "optional · only needed for Gujarati"). */
+.key-note {
+  margin-left: 6px;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--mc-faint);
+}
+
+.key-input {
+  min-height: 34px;
+  padding: 6px 13px;
+  border: 1px solid var(--mc-border);
+  border-radius: 10px;
+  background: var(--mc-fill);
+  color: var(--mc-text);
+  font: inherit;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  user-select: text;
+  -webkit-user-select: text;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.key-input::placeholder {
+  color: var(--mc-faint);
+  letter-spacing: 0;
+}
+
+.key-input:focus {
+  outline: none;
+  border-color: rgba(143, 220, 186, 0.45);
+  background: var(--mc-fill-hover);
+}
+
+.key-status {
+  min-height: 14px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--mc-faint);
+}
+
+.key-status[data-state="ok"] {
+  color: var(--mc-emerald);
+}
+
+.key-status[data-state="warn"] {
+  color: var(--mc-amber);
+}
+
+.key-status[data-state="bad"] {
+  color: var(--mc-danger);
+}
+
+.keys-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.keys-message {
+  flex: 1 1 100%;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--mc-muted);
+}
+
+.keys-message[data-state="bad"] {
+  color: var(--mc-danger);
+}
+
+.keys-message[data-state="ok"] {
+  color: var(--mc-emerald);
+}
